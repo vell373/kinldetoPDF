@@ -42,62 +42,142 @@ if (window.__kindleToPdfLoaded) {
   });
 
   /**
-   * 次ページボタンをクリック
+   * 次ページに進む
+   * 表紙では右側クリックが効かないため、変化がなければ中央クリックでリトライする
    */
   async function handleNextPage() {
-    const success = clickNextPageButton();
-    if (!success) {
-      throw new Error("次ページボタンが見つかりません");
-    }
+    // 方法1: 本文用（右側クリック + ArrowRight）
+    clickForBookContent();
+    const changed = await waitForPageTransitionWithResult(2000);
 
-    // ページ遷移アニメーション待機
-    await waitForPageTransition();
+    if (!changed) {
+      // ページ変化なし = 表紙など特殊なページ。中央クリック + Enter で再試行
+      clickForCoverPage();
+      await waitForPageTransitionWithResult(3000);
+    }
   }
 
   /**
-   * 次ページボタンをクリック（複数セレクターのフォールバック）
+   * 本文ページ用の遷移：右側クリック + ArrowRight キーイベント
    */
-  function clickNextPageButton() {
-    // Kindle Cloud Reader の次ページボタン（複数パターン）
-    const selectors = [
-      '[aria-label="次のページ"]',
-      '[aria-label="Next page"]',
-      '[aria-label="次ページ"]',
-      '[data-action="next-page"]',
-      '[data-action="nextPage"]',
-      ".kp-notebook-library-each-book",
-      "#kindleReader-next-page",
-      ".page-btn.next",
-      '[class*="next-page"]',
-    ];
-
-    for (const selector of selectors) {
-      const btn = document.querySelector(selector);
-      if (btn && isElementVisible(btn)) {
-        try {
-          btn.click();
-          return true;
-        } catch (e) {
-          console.warn("Failed to click button:", selector, e);
-        }
-      }
+  function clickForBookContent() {
+    const x = window.innerWidth * 0.8;
+    const y = window.innerHeight * 0.5;
+    const el = document.elementFromPoint(x, y);
+    if (el) {
+      el.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          view: window,
+        })
+      );
     }
 
-    // セレクターで見つからない場合：キーボードイベント（右矢印キー）
-    try {
-      const event = new KeyboardEvent("keydown", {
-        key: "ArrowRight",
-        code: "ArrowRight",
-        keyCode: 39,
-        bubbles: true,
-        cancelable: true,
+    const focusTarget =
+      document.querySelector("#kindleReader") ||
+      document.querySelector('[id*="Reader"]') ||
+      document.querySelector('[class*="reader"]') ||
+      document.body;
+
+    if (typeof focusTarget.focus === "function") focusTarget.focus();
+
+    const arrowRight = {
+      key: "ArrowRight",
+      code: "ArrowRight",
+      keyCode: 39,
+      bubbles: true,
+      cancelable: true,
+      view: window,
+    };
+    [focusTarget, document.documentElement, document].forEach((t) => {
+      t.dispatchEvent(new KeyboardEvent("keydown", arrowRight));
+      t.dispatchEvent(new KeyboardEvent("keyup", arrowRight));
+    });
+  }
+
+  /**
+   * 表紙用の遷移：中央クリック + Enter / Space キーイベント
+   * 表紙では「右側クリック」が効かないため、中央付近のクリックで本文へ進む
+   */
+  function clickForCoverPage() {
+    const x = window.innerWidth * 0.5;
+    const y = window.innerHeight * 0.5;
+    const el = document.elementFromPoint(x, y);
+    if (el) {
+      el.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          view: window,
+        })
+      );
+    }
+
+    // Enter と Space でも試みる（Kindleの表紙は Enter/Space で開く場合がある）
+    [
+      { key: "Enter", code: "Enter", keyCode: 13 },
+      { key: " ", code: "Space", keyCode: 32 },
+    ].forEach(({ key, code, keyCode }) => {
+      ["keydown", "keyup"].forEach((type) => {
+        document.dispatchEvent(
+          new KeyboardEvent(type, {
+            key,
+            code,
+            keyCode,
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          })
+        );
       });
-      document.dispatchEvent(event);
-      return true;
-    } catch (e) {
-      console.error("Failed to dispatch keyboard event:", e);
-      return false;
-    }
+    });
+  }
+
+  /**
+   * ページ遷移を待機し、DOM変化があったか否かを返す
+   * @param {number} timeoutMs - タイムアウト時間（ms）
+   * @returns {Promise<boolean>} 変化があれば true、タイムアウトなら false
+   */
+  function waitForPageTransitionWithResult(timeoutMs) {
+    return new Promise((resolve) => {
+      const contentArea =
+        document.querySelector("#kindleReader-wrapper") ||
+        document.querySelector(".book-content") ||
+        document.querySelector("[class*='reader']") ||
+        document.body;
+
+      let settled = false;
+
+      const done = (changed) => {
+        if (settled) return;
+        settled = true;
+        observer.disconnect();
+        clearTimeout(timer);
+        // 変化があった場合はレンダリング完了を少し待つ
+        setTimeout(() => resolve(changed), changed ? 500 : 0);
+      };
+
+      const timer = setTimeout(() => done(false), timeoutMs);
+
+      const observer = new MutationObserver((mutations) => {
+        const hasChange = mutations.some(
+          (m) => m.addedNodes.length > 0 || m.removedNodes.length > 0
+        );
+        if (hasChange) done(true);
+      });
+
+      observer.observe(contentArea, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["style", "class"],
+      });
+    });
   }
 
   /**
@@ -111,46 +191,6 @@ if (window.__kindleToPdfLoaded) {
       style.visibility !== "hidden" &&
       style.opacity !== "0"
     );
-  }
-
-  /**
-   * ページ遷移完了待機（MutationObserver使用）
-   */
-  async function waitForPageTransition() {
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        observer.disconnect();
-        resolve();
-      }, 3000); // 最大3秒
-
-      const observer = new MutationObserver((mutations) => {
-        // ページコンテンツが大きく変更されたか確認
-        const hasSignificantChange = mutations.some((mutation) => {
-          return mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0;
-        });
-
-        if (hasSignificantChange) {
-          clearTimeout(timeout);
-          observer.disconnect();
-          // 追加で短い遅延を入れて確実にレンダリング完了を待つ
-          setTimeout(resolve, 500);
-        }
-      });
-
-      // 監視対象を特定（Kindleリーダーのコンテンツエリア）
-      const contentArea =
-        document.querySelector("#kindleReader-wrapper") ||
-        document.querySelector(".book-content") ||
-        document.querySelector("[class*='reader']") ||
-        document.body;
-
-      observer.observe(contentArea, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ["style", "class"],
-      });
-    });
   }
 
   /**

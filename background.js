@@ -152,10 +152,17 @@ function handleStopCapture() {
   }
 }
 
+// ページ遷移後の待機時間（ms）
+// Kindleのレンダリング完了まで余裕を持たせる
+const PAGE_TRANSITION_WAIT_MS = 2500;
+
 /**
  * メインキャプチャループ
  */
 async function captureLoop() {
+  // 最初のページが表示されるまで待機
+  await waitForPageLoad();
+
   try {
     while (
       captureState.isCapturing &&
@@ -170,10 +177,7 @@ async function captureLoop() {
         });
       }
 
-      // ページロード完了待機
-      await waitForPageLoad();
-
-      // スクリーンショット取得
+      // スクリーンショット取得（現在表示中のページを撮影）
       const dataUrl = await captureScreenshot();
 
       // sidepanel に送信
@@ -185,9 +189,14 @@ async function captureLoop() {
         });
       }
 
-      // 最後のページでなければ次ページへ
+      // 最後のページでなければ次ページへ遷移して待機
       if (captureState.currentPage < captureState.endPage) {
         await turnPage();
+        // content.js の MutationObserver による遷移検知に加えて
+        // Kindleのレンダリング完了を確実に待つ
+        await new Promise((resolve) =>
+          setTimeout(resolve, PAGE_TRANSITION_WAIT_MS)
+        );
       }
 
       captureState.currentPage++;
