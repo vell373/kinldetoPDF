@@ -1,0 +1,312 @@
+:root {
+  --primary: #FF9900;
+  --primary-dark: #E67E00;
+  --danger: #DC3545;
+  --success: #28A745;
+  --warning: #FFC107;
+  --info: #17A2B8;
+  --light: #F8F9FA;
+  --dark: #343A40;
+  --border-radius: 6px;
+  --transition: 0.3s ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 320px;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dark);
+  background-color: #FFFFFF;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0;
+}
+
+header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background-color: #FAFAFA;
+}
+
+footer {
+  background-color: var(--light);
+  border-top: 1px solid #E0E0E0;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 11px;
+  color: #999;
+}
+
+.section {
+  background-color: white;
+  border: 1px solid #E0E0E0;
+  border-radius: var(--border-radius);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.section h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--dark);
+}
+
+.section h3 {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--dark);
+}
+
+/* フォーム */
+.form-group {
+  margin-bottom: 10px;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid #D0D0D0;
+  border-radius: 4px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(255, 153, 0, 0.1);
+}
+
+/* ボタン */
+.btn {
+  width: 100%;
+  padding: 10px 16px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn:last-child {
+  margin-bottom: 0;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-dark);
+  box-shadow: 0 2px 8px rgba(255, 153, 0, 0.3);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #C82333;
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-danger:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* 進捗表示 */
+.progress-text {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--dark);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 24px;
+  background-color: #E0E0E0;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+  width: 0%;
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ステータスメッセージ */
+.status-message {
+  padding: 10px 12px;
+  border-radius: var(--border-radius);
+  font-size: 12px;
+  min-height: 20px;
+  display: none;
+}
+
+.status-message.show {
+  display: block;
+}
+
+.status-success {
+  background-color: #D4EDDA;
+  color: #155724;
+  border: 1px solid #C3E6CB;
+}
+
+.status-error {
+  background-color: #F8D7DA;
+  color: #721C24;
+  border: 1px solid #F5C6CB;
+}
+
+.status-warning {
+  background-color: #FFF3CD;
+  color: #856404;
+  border: 1px solid #FFEAA7;
+}
+
+.status-info {
+  background-color: #D1ECF1;
+  color: #0C5460;
+  border: 1px solid #BEE5EB;
+}
+
+/* ログコンテナ */
+.log-container {
+  background-color: #F5F5F5;
+  border: 1px solid #E0E0E0;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 11px;
+  font-family: "Monaco", "Courier New", monospace;
+  color: #333;
+  max-height: 150px;
+  overflow-y: auto;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.log-entry {
+  margin-bottom: 4px;
+  padding: 2px 0;
+}
+
+.log-entry:last-child {
+  margin-bottom: 0;
+}
+
+.log-timestamp {
+  color: #999;
+  margin-right: 4px;
+}
+
+.log-debug {
+  color: #666;
+}
+
+.log-info {
+  color: #0066CC;
+}
+
+.log-warning {
+  color: #FF9900;
+}
+
+.log-error {
+  color: #CC0000;
+}
+
+/* 隠す */
+.hidden {
+  display: none !important;
+}
+
+/* レスポンシブ */
+@media (max-width: 400px) {
+  html,
+  body {
+    width: 100%;
+  }
+
+  main {
+    padding: 12px;
+  }
+
+  header h1 {
+    font-size: 16px;
+  }
+
+  .section {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+}

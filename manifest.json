@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Kindle to PDF",
+  "version": "1.0.0",
+  "description": "Kindle Cloud Reader をスクリーンショットして PDF に変換する拡張機能",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "downloads",
+    "scripting",
+    "sidePanel",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://read.amazon.com/*",
+    "https://read.amazon.co.jp/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Kindle to PDF",
+    "default_icon": {
+      "16": "icons/icon_16.png",
+      "48": "icons/icon_48.png",
+      "128": "icons/icon_128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon_16.png",
+    "48": "icons/icon_48.png",
+    "128": "icons/icon_128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://read.amazon.com/*",
+        "https://read.amazon.co.jp/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

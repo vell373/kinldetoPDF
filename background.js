@@ -1,0 +1,242 @@
+// Service Worker for Kindle to PDF Extension
+
+// グローバル状態管理
+let captureState = {
+  isCapturing: false,
+  currentPage: 0,
+  totalPages: 0,
+  tabId: null,
+  windowId: null,
+  startPage: 1,
+  endPage: 10,
+};
+
+// sidepanel とのポート接続を保持
+let sidepanelPort = null;
+
+/**
+ * サイドパネルを開く
+ */
+chrome.action.onClicked.addListener(async (tab) => {
+  try {
+    await chrome.sidePanel.open({ tabId: tab.id });
+  } catch (error) {
+    console.error("Failed to open side panel:", error);
+  }
+});
+
+/**
+ * sidepanel との接続管理
+ */
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "sidepanel") {
+    sidepanelPort = port;
+
+    port.onMessage.addListener(async (request) => {
+      handleSidepanelMessage(request, port);
+    });
+
+    port.onDisconnect.addListener(() => {
+      sidepanelPort = null;
+      // キャプチャ中に切断された場合は停止
+      if (captureState.isCapturing) {
+        captureState.isCapturing = false;
+      }
+    });
+  }
+});
+
+/**
+ * sidepanel からのメッセージハンドリング
+ */
+async function handleSidepanelMessage(request, port) {
+  try {
+    switch (request.action) {
+      case "startCapture":
+        await handleStartCapture(request);
+        break;
+
+      case "stopCapture":
+        handleStopCapture();
+        break;
+
+      default:
+        console.warn("Unknown action:", request.action);
+    }
+  } catch (error) {
+    console.error("Error handling message:", error);
+    if (port && port.postMessage) {
+      port.postMessage({
+        action: "captureError",
+        error: error.message || "Unknown error",
+      });
+    }
+  }
+}
+
+/**
+ * キャプチャ開始処理
+ */
+async function handleStartCapture(request) {
+  const { tabId, startPage, endPage } = request;
+
+  if (captureState.isCapturing) {
+    throw new Error("キャプチャが既に実行中です");
+  }
+
+  // 状態初期化
+  captureState.isCapturing = true;
+  captureState.currentPage = startPage;
+  captureState.totalPages = endPage;
+  captureState.tabId = tabId;
+  captureState.startPage = startPage;
+  captureState.endPage = endPage;
+
+  // tab情報取得（windowId が必要）
+  const tab = await chrome.tabs.get(tabId);
+  if (!tab) {
+    throw new Error("タブが見つかりません");
+  }
+
+  captureState.windowId = tab.windowId;
+
+  // Kindleページ確認
+  if (!tab.url.includes("read.amazon")) {
+    throw new Error("Kindle Cloud Reader ページを開いてください");
+  }
+
+  // キャプチャループ開始
+  await captureLoop();
+}
+
+/**
+ * キャプチャ停止処理
+ */
+function handleStopCapture() {
+  captureState.isCapturing = false;
+  if (sidepanelPort) {
+    sidepanelPort.postMessage({ action: "captureStopped" });
+  }
+}
+
+/**
+ * メインキャプチャループ
+ */
+async function captureLoop() {
+  try {
+    while (
+      captureState.isCapturing &&
+      captureState.currentPage <= captureState.endPage
+    ) {
+      // 進捗更新
+      if (sidepanelPort) {
+        sidepanelPort.postMessage({
+          action: "progressUpdate",
+          current: captureState.currentPage,
+          total: captureState.totalPages,
+        });
+      }
+
+      // ページロード完了待機
+      await waitForPageLoad();
+
+      // スクリーンショット取得
+      const dataUrl = await captureScreenshot();
+
+      // sidepanel に送信
+      if (sidepanelPort) {
+        sidepanelPort.postMessage({
+          action: "screenshotCaptured",
+          pageNumber: captureState.currentPage,
+          dataUrl: dataUrl,
+        });
+      }
+
+      // 最後のページでなければ次ページへ
+      if (captureState.currentPage < captureState.endPage) {
+        await turnPage();
+      }
+
+      captureState.currentPage++;
+    }
+
+    // 完了通知
+    if (sidepanelPort && captureState.isCapturing) {
+      sidepanelPort.postMessage({ action: "captureComplete" });
+    }
+  } catch (error) {
+    console.error("Capture loop error:", error);
+    if (sidepanelPort) {
+      sidepanelPort.postMessage({
+        action: "captureError",
+        error: error.message || "キャプチャエラー",
+      });
+    }
+  } finally {
+    captureState.isCapturing = false;
+  }
+}
+
+/**
+ * スクリーンショット取得
+ */
+async function captureScreenshot() {
+  return new Promise((resolve, reject) => {
+    // captureVisibleTab の第1引数はwindowId（tabIdではない）
+    chrome.tabs.captureVisibleTab(
+      captureState.windowId,
+      { format: "jpeg", quality: 80 },
+      (dataUrl) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else if (dataUrl) {
+          resolve(dataUrl);
+        } else {
+          reject(new Error("スクリーンショット取得失敗"));
+        }
+      }
+    );
+  });
+}
+
+/**
+ * ページめくり（次ページボタンクリック）
+ */
+async function turnPage() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(
+      captureState.tabId,
+      { action: "nextPage" },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else if (response && response.status === "success") {
+          resolve();
+        } else {
+          reject(new Error("ページめくり失敗"));
+        }
+      }
+    );
+  });
+}
+
+/**
+ * ページロード完了待機
+ */
+async function waitForPageLoad() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(
+      captureState.tabId,
+      { action: "waitForLoad" },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else if (response && response.status === "loaded") {
+          resolve();
+        } else {
+          reject(new Error("ページロード待機失敗"));
+        }
+      }
+    );
+  });
+}
