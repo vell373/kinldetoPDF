@@ -1,0 +1,190 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+
+/* ヘッダー */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #16213e;
+  border-bottom: 1px solid #0f3460;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e0e0e0;
+  white-space: nowrap;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.filename-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 400px;
+}
+
+.filename-group label {
+  font-size: 13px;
+  color: #a0a0b0;
+  white-space: nowrap;
+}
+
+.filename-input {
+  flex: 1;
+  padding: 6px 10px;
+  background: #0f3460;
+  border: 1px solid #1a4a80;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.filename-input:focus {
+  border-color: #4a90e2;
+}
+
+.ext {
+  font-size: 13px;
+  color: #a0a0b0;
+}
+
+.btn-download {
+  padding: 8px 20px;
+  background: #4a90e2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.btn-download:hover:not(:disabled) {
+  background: #357abd;
+}
+
+.btn-download:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-download.generating {
+  background: #2c6b9e;
+}
+
+/* ステータスバー */
+.status-bar {
+  padding: 8px 24px;
+  font-size: 13px;
+  color: #a0a0b0;
+  background: #16213e;
+  border-bottom: 1px solid #0f3460;
+}
+
+.status-bar.success {
+  color: #4caf50;
+}
+
+.status-bar.error {
+  color: #f44336;
+}
+
+/* 画像グリッド */
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 24px;
+}
+
+.image-item {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+}
+
+.image-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.image-item img {
+  width: 100%;
+  display: block;
+  object-fit: contain;
+  background: #000;
+}
+
+.image-label {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #a0a0b0;
+  text-align: center;
+  border-top: 1px solid #0f3460;
+}
+
+/* モーダル（クリックで拡大） */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  font-size: 28px;
+  color: #fff;
+  cursor: pointer;
+  line-height: 1;
+  background: none;
+  border: none;
+}

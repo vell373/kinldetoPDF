@@ -7,8 +7,10 @@
  * 画像配列をPDF に変換してダウンロード
  * @param {Array<{pageNumber: number, dataUrl: string}>} images - 画像データ配列
  * @param {string} filename - ダウンロードするファイル名（拡張子なし）
+ * @param {{ download?: boolean }} options - download: false にするとファイルを保存しない
  */
-async function generatePDF(images, filename) {
+async function generatePDF(images, filename, options = {}) {
+  const { download = true } = options;
   if (!images || images.length === 0) {
     throw new Error("画像がありません");
   }
@@ -67,14 +69,18 @@ async function generatePDF(images, filename) {
       }
     }
 
-    // PDF保存
-    pdf.save(`${safeFilename}.pdf`);
+    // download オプションが true の場合のみ即時保存
+    if (download) {
+      pdf.save(`${safeFilename}.pdf`);
+    }
 
     return {
       success: true,
       message: `${images.length} ページの PDF を生成しました`,
       filename: `${safeFilename}.pdf`,
       pageCount: images.length,
+      // download: false の場合は呼び出し元が pdf.save() を呼べるよう pdf インスタンスを返す
+      pdf: download ? null : pdf,
     };
   } catch (error) {
     throw new Error(`PDF生成エラー: ${error.message}`);

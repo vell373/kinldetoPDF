@@ -251,11 +251,9 @@ function handleProgressUpdate(message) {
  */
 async function handleCaptureComplete() {
   try {
-    showStatus("キャプチャ完了。PDF 生成中...", "info");
     addLog(`合計 ${capturedImages.length} ページをキャプチャ`, "info");
-
-    // PDF生成
-    await generateAndDownloadPDF();
+    showStatus("キャプチャ完了。プレビューを開いています...", "info");
+    await openPreview();
   } catch (error) {
     console.error("Capture complete error:", error);
     showStatus(`完了エラー: ${error.message}`, "error");
@@ -274,39 +272,31 @@ function handleCaptureError(message) {
 }
 
 /**
- * PDF生成とダウンロード
+ * キャプチャ画像を chrome.storage.local に保存してプレビュータブを開く
  */
-async function generateAndDownloadPDF() {
-  try {
-    if (capturedImages.length === 0) {
-      throw new Error("キャプチャ画像がありません");
-    }
-
-    // ページ順にソート
-    capturedImages.sort((a, b) => a.pageNumber - b.pageNumber);
-
-    // ファイル名取得
-    let filename = elements.filename.value.trim();
-    if (!filename) {
-      filename = "kindle_book";
-    }
-    filename = sanitizeFilename(filename);
-
-    // PDF生成（utils.js の関数を使用）
-    const result = await generatePDF(capturedImages, filename);
-
-    showStatus(`✓ PDF ダウンロード完了: ${result.filename}`, "success");
-    addLog(result.message, "success");
-
-    // 統計情報
-    addLog(`ページ数: ${result.pageCount}`, "debug");
-  } catch (error) {
-    console.error("PDF generation error:", error);
-    showStatus(`PDF生成エラー: ${error.message}`, "error");
-    addLog(`PDF生成エラー: ${error.message}`, "error");
-  } finally {
-    resetUI();
+async function openPreview() {
+  if (capturedImages.length === 0) {
+    throw new Error("キャプチャ画像がありません");
   }
+
+  capturedImages.sort((a, b) => a.pageNumber - b.pageNumber);
+
+  const filename = sanitizeFilename(
+    elements.filename.value.trim() || "kindle_book"
+  );
+
+  // ストレージに保存（preview.js が読み取る）
+  await chrome.storage.local.set({
+    kindleToPdf_preview: { images: capturedImages, filename },
+  });
+
+  // プレビュータブを開く
+  const previewUrl = chrome.runtime.getURL("preview.html");
+  await chrome.tabs.create({ url: previewUrl });
+
+  showStatus("プレビュータブを開きました", "success");
+  addLog("プレビュータブを開きました", "info");
+  resetUI();
 }
 
 /**
