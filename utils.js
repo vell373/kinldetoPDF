@@ -13,7 +13,8 @@ async function generatePDF(images, filename) {
     throw new Error("画像がありません");
   }
 
-  if (typeof jsPDF === "undefined") {
+  // UMD版は window.jspdf.jsPDF として公開される
+  if (typeof window.jspdf === "undefined" || typeof window.jspdf.jsPDF === "undefined") {
     throw new Error("jsPDF がロードされていません");
   }
 
@@ -34,8 +35,8 @@ async function generatePDF(images, filename) {
     const orientation = aspectRatio > 1 ? "landscape" : "portrait";
     const pageSize = [pdfWidth, pdfHeight];
 
-    // jsPDF インスタンス生成（UMD版を使用）
-    const { jsPDF: JsPdfConstructor } = window;
+    // jsPDF インスタンス生成（UMD版は window.jspdf.jsPDF）
+    const { jsPDF: JsPdfConstructor } = window.jspdf;
     const pdf = new JsPdfConstructor({
       orientation: orientation,
       unit: "mm",
