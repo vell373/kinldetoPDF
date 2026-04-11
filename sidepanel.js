@@ -96,11 +96,13 @@ async function handleStartCapture() {
       return;
     }
 
-    // アクティブタブ取得
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
+    // バックグラウンドスクリプトに開始指示
+    if (!sidepanelPort) {
+      connectToBackground();
+    }
+
+    // バックグラウンドスクリプトからアクティブタブ情報を取得
+    const tab = await getActiveTabFromBackground();
 
     if (!tab) {
       showStatus("アクティブなタブが見つかりません", "error");
@@ -131,11 +133,6 @@ async function handleStartCapture() {
       `${startPage} ページから ${endPage} ページまでキャプチャ開始`,
       "info"
     );
-
-    // バックグラウンドスクリプトに開始指示
-    if (!sidepanelPort) {
-      connectToBackground();
-    }
 
     sidepanelPort.postMessage({
       action: "startCapture",
@@ -170,12 +167,32 @@ function handleStopCapture() {
   }
 }
 
+// アクティブタブ情報リクエスト用グローバル変数
+let activeTabResolve = null;
+
+/**
+ * バックグラウンドスクリプトからアクティブタブ情報を取得（Promise版）
+ */
+function getActiveTabFromBackground() {
+  return new Promise((resolve) => {
+    activeTabResolve = resolve;
+    sidepanelPort.postMessage({ action: "getActiveTab" });
+  });
+}
+
 /**
  * バックグラウンドスクリプトからのメッセージハンドリング
  */
 async function handleBackgroundMessage(message) {
   try {
     switch (message.action) {
+      case "activeTabInfo":
+        if (activeTabResolve) {
+          activeTabResolve(message.tab);
+          activeTabResolve = null;
+        }
+        break;
+
       case "screenshotCaptured":
         handleScreenshotCaptured(message);
         break;

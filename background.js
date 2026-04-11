@@ -52,6 +52,10 @@ chrome.runtime.onConnect.addListener((port) => {
 async function handleSidepanelMessage(request, port) {
   try {
     switch (request.action) {
+      case "getActiveTab":
+        await handleGetActiveTab(port);
+        break;
+
       case "startCapture":
         await handleStartCapture(request);
         break;
@@ -71,6 +75,23 @@ async function handleSidepanelMessage(request, port) {
         error: error.message || "Unknown error",
       });
     }
+  }
+}
+
+/**
+ * アクティブタブ情報取得
+ */
+async function handleGetActiveTab(port) {
+  const [tab] = await chrome.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
+
+  if (port) {
+    port.postMessage({
+      action: "activeTabInfo",
+      tab: tab,
+    });
   }
 }
 
@@ -103,6 +124,18 @@ async function handleStartCapture(request) {
   // Kindleページ確認
   if (!tab.url.includes("read.amazon")) {
     throw new Error("Kindle Cloud Reader ページを開いてください");
+  }
+
+  // 拡張機能リロード後にcontent scriptが未注入の場合があるため動的に注入
+  // content.js は多重ロード防止済み（window.__kindleToPdfLoaded）なので安全
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ["content.js"],
+    });
+  } catch (e) {
+    // 既に注入済みの場合などは無視
+    console.warn("Content script injection skipped:", e.message);
   }
 
   // キャプチャループ開始
