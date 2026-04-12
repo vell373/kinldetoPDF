@@ -169,20 +169,31 @@ async function handleStartCapture() {
 /**
  * スクリーンショット停止ボタンのハンドラー
  */
-function handleStopCapture() {
+async function handleStopCapture() {
   try {
     isCapturing = false;
-    showStatus("キャプチャを中止しました", "warning");
-    addLog("ユーザーがキャプチャを中止", "warning");
+    addLog("ユーザーがキャプチャを停止", "warning");
 
     if (sidepanelPort) {
       sidepanelPort.postMessage({ action: "stopCapture" });
     }
 
-    resetUI();
+    // キャプチャ済み画像があればプレビューを開く
+    if (capturedImages.length > 0) {
+      showStatus(
+        `${capturedImages.length}ページをキャプチャ済み。プレビューを開いています...`,
+        "info"
+      );
+      addLog(`停止時点で ${capturedImages.length} ページをキャプチャ済み`, "info");
+      await openPreview();
+    } else {
+      showStatus("キャプチャを停止しました（キャプチャ画像なし）", "warning");
+      resetUI();
+    }
   } catch (error) {
     console.error("Stop capture error:", error);
     showStatus(`停止エラー: ${error.message}`, "error");
+    resetUI();
   }
 }
 
@@ -229,7 +240,9 @@ async function handleBackgroundMessage(message) {
         break;
 
       case "captureStopped":
-        resetUI();
+        // 停止時のプレビュー処理はhandleStopCapture側で実施済み
+        // UIが未リセットの場合（接続切れ等）に備えてフォールバックのみ
+        if (isCapturing) resetUI();
         break;
 
       default:
