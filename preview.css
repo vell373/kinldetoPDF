@@ -125,19 +125,65 @@ body {
 }
 
 .image-item {
+  position: relative;
   background: #16213e;
   border: 1px solid #0f3460;
   border-radius: 8px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform 0.15s, box-shadow 0.15s;
-  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  cursor: grab;
 }
 
 .image-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* ドラッグ中のカード */
+.image-item.dragging {
+  opacity: 0.35;
+  cursor: grabbing;
+  transform: none;
+}
+
+/* ドロップ受け入れ先のハイライト */
+.image-item.drag-over {
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.45);
+  transform: scale(1.02);
+}
+
+/* ×削除ボタン */
+.delete-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  background: rgba(220, 53, 69, 0.88);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 10;
+}
+
+.image-item:hover .delete-btn {
+  opacity: 1;
+}
+
+.delete-btn:hover {
+  background: rgba(200, 35, 51, 1);
 }
 
 .image-item img {

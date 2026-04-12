@@ -7,6 +7,7 @@ const STORAGE_KEY = "kindleToPdf_preview";
 
 let previewData = null;
 let currentModalIndex = -1;
+let dragSourceIndex = null;
 
 const elements = {
   filename: document.getElementById("filename"),
@@ -54,9 +55,20 @@ async function loadPreviewData() {
 function renderImageGrid(images) {
   elements.imageGrid.innerHTML = "";
 
-  images.forEach((img) => {
+  images.forEach((img, index) => {
     const item = document.createElement("div");
     item.className = "image-item";
+    item.draggable = true;
+
+    // ×削除ボタン
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete-btn";
+    deleteBtn.innerHTML = "&times;";
+    deleteBtn.title = "このページを削除";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteImage(index);
+    });
 
     const imgEl = document.createElement("img");
     imgEl.src = img.dataUrl;
@@ -67,15 +79,73 @@ function renderImageGrid(images) {
     label.className = "image-label";
     label.textContent = `ページ ${img.pageNumber}`;
 
+    item.appendChild(deleteBtn);
     item.appendChild(imgEl);
     item.appendChild(label);
 
-    // クリックで拡大表示（index を渡してナビゲーション対応）
-    const capturedIndex = images.indexOf(img);
-    item.addEventListener("click", () => openModal(capturedIndex));
+    // クリックで拡大表示
+    item.addEventListener("click", () => openModal(index));
+
+    // ドラッグ開始
+    item.addEventListener("dragstart", (e) => {
+      dragSourceIndex = index;
+      item.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+
+    // ドラッグ終了（どこにドロップされても後始末）
+    item.addEventListener("dragend", () => {
+      item.classList.remove("dragging");
+      document.querySelectorAll(".image-item").forEach((el) =>
+        el.classList.remove("drag-over")
+      );
+    });
+
+    // ドロップ受け入れ許可
+    item.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      item.classList.add("drag-over");
+    });
+
+    // 子要素へのイベントを除外してハイライトを除去
+    item.addEventListener("dragleave", (e) => {
+      if (!item.contains(e.relatedTarget)) {
+        item.classList.remove("drag-over");
+      }
+    });
+
+    // ドロップ：配列を並び替えて再描画
+    item.addEventListener("drop", (e) => {
+      e.preventDefault();
+      item.classList.remove("drag-over");
+      if (dragSourceIndex === null || dragSourceIndex === index) return;
+
+      const [moved] = previewData.images.splice(dragSourceIndex, 1);
+      previewData.images.splice(index, 0, moved);
+      dragSourceIndex = null;
+
+      renderImageGrid(previewData.images);
+      setStatus(`${previewData.images.length} ページ — 画像をクリックで拡大`);
+    });
 
     elements.imageGrid.appendChild(item);
   });
+}
+
+/**
+ * 指定インデックスの画像を削除
+ */
+function deleteImage(index) {
+  previewData.images.splice(index, 1);
+  renderImageGrid(previewData.images);
+
+  if (previewData.images.length === 0) {
+    elements.downloadBtn.disabled = true;
+    setStatus("画像がありません", "error");
+  } else {
+    setStatus(`${previewData.images.length} ページ — 画像をクリックで拡大`);
+  }
 }
 
 /**
