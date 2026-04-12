@@ -6,6 +6,7 @@
 const STORAGE_KEY = "kindleToPdf_preview";
 
 let previewData = null;
+let currentModalIndex = -1;
 
 const elements = {
   filename: document.getElementById("filename"),
@@ -69,8 +70,9 @@ function renderImageGrid(images) {
     item.appendChild(imgEl);
     item.appendChild(label);
 
-    // クリックで拡大表示
-    item.addEventListener("click", () => openModal(img.dataUrl, img.pageNumber));
+    // クリックで拡大表示（index を渡してナビゲーション対応）
+    const capturedIndex = images.indexOf(img);
+    item.addEventListener("click", () => openModal(capturedIndex));
 
     elements.imageGrid.appendChild(item);
   });
@@ -113,30 +115,61 @@ const modal = document.createElement("div");
 modal.className = "modal-overlay";
 modal.innerHTML = `
   <button class="modal-close" aria-label="閉じる">&times;</button>
+  <button class="modal-nav modal-prev" aria-label="前のページ">&#8592;</button>
   <img class="modal-img" src="" alt="">
+  <button class="modal-nav modal-next" aria-label="次のページ">&#8594;</button>
+  <div class="modal-page-label"></div>
 `;
 document.body.appendChild(modal);
 
 const modalImg = modal.querySelector(".modal-img");
 const modalClose = modal.querySelector(".modal-close");
+const modalPrev = modal.querySelector(".modal-prev");
+const modalNext = modal.querySelector(".modal-next");
+const modalPageLabel = modal.querySelector(".modal-page-label");
 
-function openModal(src, pageNumber) {
-  modalImg.src = src;
-  modalImg.alt = `ページ ${pageNumber}`;
+function openModal(index) {
+  const images = previewData.images;
+  currentModalIndex = index;
+  const img = images[index];
+  modalImg.src = img.dataUrl;
+  modalImg.alt = `ページ ${img.pageNumber}`;
+  modalPageLabel.textContent = `${index + 1} / ${images.length}`;
+  updateModalNavButtons();
   modal.classList.add("open");
 }
 
 function closeModal() {
   modal.classList.remove("open");
   modalImg.src = "";
+  currentModalIndex = -1;
+}
+
+function navigateModal(delta) {
+  if (!previewData) return;
+  const newIndex = currentModalIndex + delta;
+  if (newIndex >= 0 && newIndex < previewData.images.length) {
+    openModal(newIndex);
+  }
+}
+
+function updateModalNavButtons() {
+  const total = previewData ? previewData.images.length : 0;
+  modalPrev.disabled = currentModalIndex <= 0;
+  modalNext.disabled = currentModalIndex >= total - 1;
 }
 
 modalClose.addEventListener("click", closeModal);
+modalPrev.addEventListener("click", (e) => { e.stopPropagation(); navigateModal(-1); });
+modalNext.addEventListener("click", (e) => { e.stopPropagation(); navigateModal(1); });
 modal.addEventListener("click", (e) => {
   if (e.target === modal) closeModal();
 });
 document.addEventListener("keydown", (e) => {
+  if (!modal.classList.contains("open")) return;
   if (e.key === "Escape") closeModal();
+  if (e.key === "ArrowLeft") navigateModal(-1);
+  if (e.key === "ArrowRight") navigateModal(1);
 });
 
 /* ======== 初期化 ======== */
