@@ -223,8 +223,13 @@ async function captureLoop() {
 
 /**
  * スクリーンショット取得
+ * captureVisibleTab は指定ウィンドウの「アクティブタブ」を撮影するため、
+ * キャプチャ前に Kindle タブを確実にアクティブにしてから撮影する
  */
 async function captureScreenshot() {
+  // Kindleタブをアクティブにする（ページ遷移中などに非アクティブになった場合の保険）
+  await chrome.tabs.update(captureState.tabId, { active: true });
+
   return new Promise((resolve, reject) => {
     // captureVisibleTab の第1引数はwindowId（tabIdではない）
     chrome.tabs.captureVisibleTab(
