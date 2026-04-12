@@ -7,6 +7,7 @@
 let capturedImages = [];
 let isCapturing = false;
 let sidepanelPort = null;
+let isRtl = false; // true = 右開き（漫画・縦書き）
 
 // DOM要素キャッシュ
 const elements = {
@@ -20,7 +21,23 @@ const elements = {
   progressFill: document.getElementById("progressFill"),
   statusMessage: document.getElementById("statusMessage"),
   logContainer: document.getElementById("logContainer"),
+  dirLtr: document.getElementById("dirLtr"),
+  dirRtl: document.getElementById("dirRtl"),
 };
+
+/**
+ * 開き方向トグルの初期化
+ */
+function initDirectionToggle() {
+  elements.dirLtr.addEventListener("click", () => setDirection(false));
+  elements.dirRtl.addEventListener("click", () => setDirection(true));
+}
+
+function setDirection(rtl) {
+  isRtl = rtl;
+  elements.dirLtr.classList.toggle("active", !rtl);
+  elements.dirRtl.classList.toggle("active", rtl);
+}
 
 /**
  * 初期化
@@ -32,6 +49,7 @@ function initialize() {
   // イベントリスナー登録
   elements.startBtn.addEventListener("click", handleStartCapture);
   elements.stopBtn.addEventListener("click", handleStopCapture);
+  initDirectionToggle();
 
   // 初期ログ
   addLog("サイドパネル起動完了", "info");
@@ -139,6 +157,7 @@ async function handleStartCapture() {
       tabId: tab.id,
       startPage: startPage,
       endPage: endPage,
+      rtl: isRtl,
     });
   } catch (error) {
     console.error("Start capture error:", error);

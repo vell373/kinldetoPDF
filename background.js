@@ -9,6 +9,7 @@ let captureState = {
   windowId: null,
   startPage: 1,
   endPage: 10,
+  rtl: false, // true = 右開き（漫画・縦書き）
 };
 
 // sidepanel とのポート接続を保持
@@ -112,6 +113,7 @@ async function handleStartCapture(request) {
   captureState.tabId = tabId;
   captureState.startPage = startPage;
   captureState.endPage = endPage;
+  captureState.rtl = request.rtl || false;
 
   // tab情報取得（windowId が必要）
   const tab = await chrome.tabs.get(tabId);
@@ -248,7 +250,7 @@ async function turnPage() {
   return new Promise((resolve, reject) => {
     chrome.tabs.sendMessage(
       captureState.tabId,
-      { action: "nextPage" },
+      { action: "nextPage", rtl: captureState.rtl },
       (response) => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));

@@ -285,6 +285,39 @@ footer {
   color: #CC0000;
 }
 
+/* 開き方向トグル */
+.direction-toggle {
+  display: flex;
+  border: 1px solid #D0D0D0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dir-btn {
+  flex: 1;
+  padding: 7px 0;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: #F5F5F5;
+  color: #666;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.dir-btn:first-child {
+  border-right: 1px solid #D0D0D0;
+}
+
+.dir-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.dir-btn:hover:not(.active) {
+  background: #E8E8E8;
+}
+
 /* 隠す */
 .hidden {
   display: none !important;

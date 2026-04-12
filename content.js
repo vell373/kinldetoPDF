@@ -14,7 +14,7 @@ if (window.__kindleToPdfLoaded) {
       try {
         switch (request.action) {
           case "nextPage":
-            await handleNextPage();
+            await handleNextPage(request.rtl || false);
             sendResponse({ status: "success" });
             break;
 
@@ -44,10 +44,11 @@ if (window.__kindleToPdfLoaded) {
   /**
    * 次ページに進む
    * 表紙では右側クリックが効かないため、変化がなければ中央クリックでリトライする
+   * @param {boolean} rtl - true のとき右開き（漫画・縦書き）。次ページは左側をクリック
    */
-  async function handleNextPage() {
-    // 方法1: 本文用（右側クリック + ArrowRight）
-    clickForBookContent();
+  async function handleNextPage(rtl) {
+    // 方法1: 本文用（rtl に応じたクリック + 矢印キー）
+    clickForBookContent(rtl);
     const changed = await waitForPageTransitionWithResult(2000);
 
     if (!changed) {
@@ -58,10 +59,14 @@ if (window.__kindleToPdfLoaded) {
   }
 
   /**
-   * 本文ページ用の遷移：右側クリック + ArrowRight キーイベント
+   * 本文ページ用の遷移
+   * 左開き（ltr）: 右側クリック + ArrowRight
+   * 右開き（rtl）: 左側クリック + ArrowLeft
+   * @param {boolean} rtl
    */
-  function clickForBookContent() {
-    const x = window.innerWidth * 0.8;
+  function clickForBookContent(rtl) {
+    // 右開きは左側（20%）、左開きは右側（80%）をクリック
+    const x = rtl ? window.innerWidth * 0.2 : window.innerWidth * 0.8;
     const y = window.innerHeight * 0.5;
     const el = document.elementFromPoint(x, y);
     if (el) {
@@ -84,17 +89,15 @@ if (window.__kindleToPdfLoaded) {
 
     if (typeof focusTarget.focus === "function") focusTarget.focus();
 
-    const arrowRight = {
-      key: "ArrowRight",
-      code: "ArrowRight",
-      keyCode: 39,
-      bubbles: true,
-      cancelable: true,
-      view: window,
-    };
+    // 右開きは ArrowLeft で次ページ、左開きは ArrowRight
+    const arrowKey = rtl
+      ? { key: "ArrowLeft", code: "ArrowLeft", keyCode: 37 }
+      : { key: "ArrowRight", code: "ArrowRight", keyCode: 39 };
+
+    const keyOpts = { ...arrowKey, bubbles: true, cancelable: true, view: window };
     [focusTarget, document.documentElement, document].forEach((t) => {
-      t.dispatchEvent(new KeyboardEvent("keydown", arrowRight));
-      t.dispatchEvent(new KeyboardEvent("keyup", arrowRight));
+      t.dispatchEvent(new KeyboardEvent("keydown", keyOpts));
+      t.dispatchEvent(new KeyboardEvent("keyup", keyOpts));
     });
   }
 
