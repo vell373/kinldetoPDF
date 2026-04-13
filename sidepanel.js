@@ -6,6 +6,7 @@
 // グローバル状態
 let capturedImages = [];
 let isCapturing = false;
+let isPaused = false;
 let sidepanelPort = null;
 let isRtl = false; // true = 右開き（漫画・縦書き）
 
@@ -13,6 +14,7 @@ let isRtl = false; // true = 右開き（漫画・縦書き）
 const elements = {
   startBtn: document.getElementById("startBtn"),
   stopBtn: document.getElementById("stopBtn"),
+  finishBtn: document.getElementById("finishBtn"),
   startPage: document.getElementById("startPage"),
   endPage: document.getElementById("endPage"),
   filename: document.getElementById("filename"),
@@ -48,7 +50,8 @@ function initialize() {
 
   // イベントリスナー登録
   elements.startBtn.addEventListener("click", handleStartCapture);
-  elements.stopBtn.addEventListener("click", handleStopCapture);
+  elements.stopBtn.addEventListener("click", handlePauseResume);
+  elements.finishBtn.addEventListener("click", handleFinishCapture);
   initDirectionToggle();
 
   // 初期ログ
@@ -152,8 +155,12 @@ async function handleStartCapture() {
     // UI更新
     capturedImages = [];
     isCapturing = true;
+    isPaused = false;
     elements.startBtn.disabled = true;
     elements.stopBtn.disabled = false;
+    elements.stopBtn.textContent = "一時停止";
+    elements.stopBtn.classList.remove("btn-resume");
+    elements.finishBtn.disabled = false;
     elements.progressSection.classList.remove("hidden");
     elements.startPage.disabled = true;
     elements.endPage.disabled = true;
@@ -181,15 +188,41 @@ async function handleStartCapture() {
 }
 
 /**
- * スクリーンショット停止ボタンのハンドラー
+ * 一時停止 / 再開トグルハンドラー
  */
-async function handleStopCapture() {
+function handlePauseResume() {
+  if (isPaused) {
+    // 再開
+    isPaused = false;
+    addLog("キャプチャを再開", "info");
+    elements.stopBtn.textContent = "一時停止";
+    elements.stopBtn.classList.remove("btn-resume");
+    showStatus("キャプチャを再開しています...", "info");
+    if (sidepanelPort) {
+      sidepanelPort.postMessage({ action: "resumeCapture" });
+    }
+  } else {
+    // 一時停止要求（現在ページのスクショ完了後に停止）
+    addLog("現在ページ完了後に一時停止します", "warning");
+    elements.stopBtn.disabled = true; // 停止確定まで連打防止
+    showStatus("現在のページ完了後に一時停止します...", "warning");
+    if (sidepanelPort) {
+      sidepanelPort.postMessage({ action: "pauseCapture" });
+    }
+  }
+}
+
+/**
+ * 終了ボタンのハンドラー（プレビューへ遷移）
+ */
+async function handleFinishCapture() {
   try {
     isCapturing = false;
-    addLog("ユーザーがキャプチャを停止", "warning");
+    isPaused = false;
+    addLog("ユーザーがキャプチャを終了", "warning");
 
     if (sidepanelPort) {
-      sidepanelPort.postMessage({ action: "stopCapture" });
+      sidepanelPort.postMessage({ action: "finishCapture" });
     }
 
     // キャプチャ済み画像があればプレビューを開く
@@ -198,15 +231,15 @@ async function handleStopCapture() {
         `${capturedImages.length}ページをキャプチャ済み。プレビューを開いています...`,
         "info"
       );
-      addLog(`停止時点で ${capturedImages.length} ページをキャプチャ済み`, "info");
+      addLog(`終了時点で ${capturedImages.length} ページをキャプチャ済み`, "info");
       await openPreview();
     } else {
-      showStatus("キャプチャを停止しました（キャプチャ画像なし）", "warning");
+      showStatus("キャプチャを終了しました（キャプチャ画像なし）", "warning");
       resetUI();
     }
   } catch (error) {
-    console.error("Stop capture error:", error);
-    showStatus(`停止エラー: ${error.message}`, "error");
+    console.error("Finish capture error:", error);
+    showStatus(`終了エラー: ${error.message}`, "error");
     resetUI();
   }
 }
@@ -249,6 +282,14 @@ async function handleBackgroundMessage(message) {
         addLog(`ページ ${message.pageNumber} で最終ページを検知（重複画像）`, "info");
         break;
 
+      case "capturePaused":
+        handleCapturePaused(message);
+        break;
+
+      case "captureResumed":
+        handleCaptureResumed();
+        break;
+
       case "captureComplete":
         await handleCaptureComplete();
         break;
@@ -270,6 +311,27 @@ async function handleBackgroundMessage(message) {
     console.error("Error handling background message:", error);
     showStatus(`メッセージ処理エラー: ${error.message}`, "error");
   }
+}
+
+/**
+ * 一時停止完了（バックグラウンドからの通知）
+ */
+function handleCapturePaused(message) {
+  isPaused = true;
+  const page = message.pageNumber;
+  addLog(`ページ ${page} 完了後に一時停止`, "warning");
+  showStatus(`ページ ${page} で一時停止中。「再開」で続きから再開できます`, "warning");
+  elements.stopBtn.textContent = "再開";
+  elements.stopBtn.classList.add("btn-resume");
+  elements.stopBtn.disabled = false;
+}
+
+/**
+ * 再開完了（バックグラウンドからの通知）
+ */
+function handleCaptureResumed() {
+  addLog("キャプチャを再開しました", "info");
+  showStatus("キャプチャを再開しています...", "info");
 }
 
 /**
@@ -376,13 +438,18 @@ function showStatus(message, type = "info") {
  */
 function resetUI() {
   isCapturing = false;
+  isPaused = false;
   elements.startBtn.disabled = false;
   elements.stopBtn.disabled = true;
+  elements.stopBtn.textContent = "一時停止";
+  elements.stopBtn.classList.remove("btn-resume");
+  elements.finishBtn.disabled = true;
   elements.progressSection.classList.add("hidden");
   elements.startPage.disabled = false;
   elements.endPage.disabled = false;
   elements.filename.disabled = false;
   elements.progressFill.style.width = "0%";
+  elements.progressFill.classList.remove("indeterminate");
   elements.progressText.textContent = "準備中...";
 }
 

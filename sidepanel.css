@@ -165,6 +165,31 @@ footer {
   transform: scale(0.98);
 }
 
+.btn-warning {
+  background-color: var(--warning);
+  color: var(--dark);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: #E0A800;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+}
+
+.btn-warning:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* 再開状態（一時停止中） */
+.btn-warning.btn-resume {
+  background-color: var(--success);
+  color: white;
+}
+
+.btn-warning.btn-resume:hover:not(:disabled) {
+  background-color: #218838;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
 .btn-danger {
   background-color: var(--danger);
   color: white;

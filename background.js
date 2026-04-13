@@ -12,6 +12,8 @@ let captureState = {
   rtl: false, // true = 右開き（漫画・縦書き）
   autoDetect: false, // true = 終了ページ省略・重複検知で自動終了
   previousDataUrl: null, // 重複検知用：直前のスクリーンショット
+  isPaused: false, // 一時停止中フラグ
+  pauseRequested: false, // 現ページ完了後に一時停止を要求するフラグ
 };
 
 // sidepanel とのポート接続を保持
@@ -63,8 +65,16 @@ async function handleSidepanelMessage(request, port) {
         await handleStartCapture(request);
         break;
 
-      case "stopCapture":
-        handleStopCapture();
+      case "pauseCapture":
+        handlePauseCapture();
+        break;
+
+      case "resumeCapture":
+        handleResumeCapture();
+        break;
+
+      case "finishCapture":
+        handleFinishCapture();
         break;
 
       default:
@@ -119,6 +129,8 @@ async function handleStartCapture(request) {
   // endPage が 9999 は自動検出モード（sidepanel.js 側で設定）
   captureState.autoDetect = endPage >= 9999;
   captureState.previousDataUrl = null;
+  captureState.isPaused = false;
+  captureState.pauseRequested = false;
 
   // tab情報取得（windowId が必要）
   const tab = await chrome.tabs.get(tabId);
@@ -150,10 +162,27 @@ async function handleStartCapture(request) {
 }
 
 /**
- * キャプチャ停止処理
+ * 一時停止要求：現在ページのスクショ完了後に停止
  */
-function handleStopCapture() {
+function handlePauseCapture() {
+  captureState.pauseRequested = true;
+}
+
+/**
+ * 再開処理
+ */
+function handleResumeCapture() {
+  captureState.isPaused = false;
+  // captureLoop 内の waitIfPaused ポーリングが自動的に解除される
+}
+
+/**
+ * 終了処理（プレビューへ遷移するための停止通知）
+ */
+function handleFinishCapture() {
   captureState.isCapturing = false;
+  captureState.isPaused = false; // 一時停止中でも即終了できるよう解除
+  captureState.pauseRequested = false;
   if (sidepanelPort) {
     sidepanelPort.postMessage({ action: "captureStopped" });
   }
@@ -209,6 +238,24 @@ async function captureLoop() {
         });
       }
 
+      // スクリーンショット完了後に一時停止要求があれば一時停止
+      if (captureState.pauseRequested) {
+        captureState.isPaused = true;
+        captureState.pauseRequested = false;
+        if (sidepanelPort) {
+          sidepanelPort.postMessage({
+            action: "capturePaused",
+            pageNumber: captureState.currentPage,
+          });
+        }
+        // 再開 or 終了まで待機
+        await waitIfPaused();
+        if (!captureState.isCapturing) break;
+        if (sidepanelPort) {
+          sidepanelPort.postMessage({ action: "captureResumed" });
+        }
+      }
+
       // 最後のページでなければ次ページへ遷移して待機
       if (captureState.currentPage < captureState.endPage) {
         await turnPage();
@@ -237,6 +284,24 @@ async function captureLoop() {
   } finally {
     captureState.isCapturing = false;
   }
+}
+
+/**
+ * 一時停止中は再開または終了まで待機する
+ */
+function waitIfPaused() {
+  return new Promise((resolve) => {
+    if (!captureState.isPaused) {
+      resolve();
+      return;
+    }
+    const check = setInterval(() => {
+      if (!captureState.isPaused || !captureState.isCapturing) {
+        clearInterval(check);
+        resolve();
+      }
+    }, 100);
+  });
 }
 
 /**
