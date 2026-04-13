@@ -69,11 +69,16 @@ function connectToBackground() {
     });
 
     sidepanelPort.onDisconnect.addListener(() => {
-      console.warn("Background connection disconnected");
       sidepanelPort = null;
       if (isCapturing) {
+        // キャプチャ中の切断は異常 → エラー表示してリセット
         showStatus("背景スクリプトとの接続が切断されました", "error");
         resetUI();
+      } else {
+        // MV3 Service Worker の休止による切断は正常。自動再接続する
+        setTimeout(() => {
+          if (!sidepanelPort) connectToBackground();
+        }, 1000);
       }
     });
 
@@ -84,6 +89,10 @@ function connectToBackground() {
       "バックグラウンドスクリプトとの接続に失敗しました",
       "error"
     );
+    // 接続失敗時もリトライ
+    setTimeout(() => {
+      if (!sidepanelPort) connectToBackground();
+    }, 2000);
   }
 }
 
