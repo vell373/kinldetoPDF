@@ -7,7 +7,7 @@ let captureState = {
   totalPages: 0,
   tabId: null,
   windowId: null,
-  startPage: 1,
+  startPage: 1, // 常に1固定（Kindleは現在表示ページからキャプチャ開始）
   endPage: 10,
   rtl: false, // true = 右開き（漫画・縦書き）
   autoDetect: false, // true = 終了ページ省略・重複検知で自動終了
@@ -112,18 +112,18 @@ async function handleGetActiveTab(port) {
  * キャプチャ開始処理
  */
 async function handleStartCapture(request) {
-  const { tabId, startPage, endPage } = request;
+  const { tabId, endPage } = request;
 
   if (captureState.isCapturing) {
     throw new Error("キャプチャが既に実行中です");
   }
 
-  // 状態初期化
+  // 状態初期化（開始は常に1：Kindleの現在表示ページから始まるため）
   captureState.isCapturing = true;
-  captureState.currentPage = startPage;
+  captureState.currentPage = 1;
   captureState.totalPages = endPage;
   captureState.tabId = tabId;
-  captureState.startPage = startPage;
+  captureState.startPage = 1;
   captureState.endPage = endPage;
   captureState.rtl = request.rtl || false;
   // endPage が 9999 は自動検出モード（sidepanel.js 側で設定）

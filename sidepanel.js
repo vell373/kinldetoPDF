@@ -15,7 +15,6 @@ const elements = {
   startBtn: document.getElementById("startBtn"),
   stopBtn: document.getElementById("stopBtn"),
   finishBtn: document.getElementById("finishBtn"),
-  startPage: document.getElementById("startPage"),
   endPage: document.getElementById("endPage"),
   filename: document.getElementById("filename"),
   progressSection: document.getElementById("progress"),
@@ -94,39 +93,18 @@ function connectToBackground() {
 async function handleStartCapture() {
   try {
     // バリデーション
-    const startPage = parseInt(elements.startPage.value, 10);
     // endPage が空欄の場合は自動検出モード（9999 = 事実上無制限）
     const endPageRaw = elements.endPage.value.trim();
     const isAutoDetect = endPageRaw === "";
     const endPage = isAutoDetect ? 9999 : parseInt(endPageRaw, 10);
-
-    if (isNaN(startPage)) {
-      showStatus("開始ページは数値で入力してください", "error");
-      return;
-    }
 
     if (!isAutoDetect && isNaN(endPage)) {
       showStatus("終了ページは数値で入力してください", "error");
       return;
     }
 
-    if (startPage < 1) {
-      showStatus("開始ページは1以上である必要があります", "error");
-      return;
-    }
-
     if (!isAutoDetect && endPage < 1) {
       showStatus("終了ページは1以上である必要があります", "error");
-      return;
-    }
-
-    if (!isAutoDetect && startPage > endPage) {
-      showStatus("開始ページは終了ページ以下である必要があります", "error");
-      return;
-    }
-
-    if (!isAutoDetect && endPage - startPage + 1 > 500) {
-      showStatus("一度に最大500ページまでキャプチャできます", "error");
       return;
     }
 
@@ -162,21 +140,20 @@ async function handleStartCapture() {
     elements.stopBtn.classList.remove("btn-resume");
     elements.finishBtn.disabled = false;
     elements.progressSection.classList.remove("hidden");
-    elements.startPage.disabled = true;
     elements.endPage.disabled = true;
     elements.filename.disabled = true;
 
     showStatus("スクリーンショット開始...", "info");
     if (isAutoDetect) {
-      addLog(`${startPage} ページから最終ページまで自動検出でキャプチャ開始`, "info");
+      addLog("最終ページまで自動検出でキャプチャ開始", "info");
     } else {
-      addLog(`${startPage} ページから ${endPage} ページまでキャプチャ開始`, "info");
+      addLog(`${endPage} ページまでキャプチャ開始`, "info");
     }
 
     sidepanelPort.postMessage({
       action: "startCapture",
       tabId: tab.id,
-      startPage: startPage,
+      startPage: 1,
       endPage: endPage,
       rtl: isRtl,
     });
@@ -445,13 +422,13 @@ function resetUI() {
   elements.stopBtn.classList.remove("btn-resume");
   elements.finishBtn.disabled = true;
   elements.progressSection.classList.add("hidden");
-  elements.startPage.disabled = false;
   elements.endPage.disabled = false;
   elements.filename.disabled = false;
   elements.progressFill.style.width = "0%";
   elements.progressFill.classList.remove("indeterminate");
   elements.progressText.textContent = "準備中...";
 }
+
 
 /**
  * ログに エントリを追加
