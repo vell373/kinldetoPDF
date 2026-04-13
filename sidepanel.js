@@ -92,24 +92,37 @@ async function handleStartCapture() {
   try {
     // バリデーション
     const startPage = parseInt(elements.startPage.value, 10);
-    const endPage = parseInt(elements.endPage.value, 10);
+    // endPage が空欄の場合は自動検出モード（9999 = 事実上無制限）
+    const endPageRaw = elements.endPage.value.trim();
+    const isAutoDetect = endPageRaw === "";
+    const endPage = isAutoDetect ? 9999 : parseInt(endPageRaw, 10);
 
-    if (isNaN(startPage) || isNaN(endPage)) {
-      showStatus("ページ番号は数値で入力してください", "error");
+    if (isNaN(startPage)) {
+      showStatus("開始ページは数値で入力してください", "error");
       return;
     }
 
-    if (startPage < 1 || endPage < 1) {
-      showStatus("ページ番号は1以上である必要があります", "error");
+    if (!isAutoDetect && isNaN(endPage)) {
+      showStatus("終了ページは数値で入力してください", "error");
       return;
     }
 
-    if (startPage > endPage) {
+    if (startPage < 1) {
+      showStatus("開始ページは1以上である必要があります", "error");
+      return;
+    }
+
+    if (!isAutoDetect && endPage < 1) {
+      showStatus("終了ページは1以上である必要があります", "error");
+      return;
+    }
+
+    if (!isAutoDetect && startPage > endPage) {
       showStatus("開始ページは終了ページ以下である必要があります", "error");
       return;
     }
 
-    if (endPage - startPage + 1 > 500) {
+    if (!isAutoDetect && endPage - startPage + 1 > 500) {
       showStatus("一度に最大500ページまでキャプチャできます", "error");
       return;
     }
@@ -147,10 +160,11 @@ async function handleStartCapture() {
     elements.filename.disabled = true;
 
     showStatus("スクリーンショット開始...", "info");
-    addLog(
-      `${startPage} ページから ${endPage} ページまでキャプチャ開始`,
-      "info"
-    );
+    if (isAutoDetect) {
+      addLog(`${startPage} ページから最終ページまで自動検出でキャプチャ開始`, "info");
+    } else {
+      addLog(`${startPage} ページから ${endPage} ページまでキャプチャ開始`, "info");
+    }
 
     sidepanelPort.postMessage({
       action: "startCapture",
@@ -231,6 +245,10 @@ async function handleBackgroundMessage(message) {
         handleProgressUpdate(message);
         break;
 
+      case "lastPageDetected":
+        addLog(`ページ ${message.pageNumber} で最終ページを検知（重複画像）`, "info");
+        break;
+
       case "captureComplete":
         await handleCaptureComplete();
         break;
@@ -271,11 +289,19 @@ function handleScreenshotCaptured(message) {
  * 進捗更新
  */
 function handleProgressUpdate(message) {
-  const { current, total } = message;
-  const percent = Math.round((current / total) * 100);
+  const { current, total, autoDetect } = message;
 
-  elements.progressText.textContent = `スクリーンショット中... (${current}/${total})`;
-  elements.progressFill.style.width = `${percent}%`;
+  if (autoDetect) {
+    // 自動検出モードは終了ページ不明なので件数のみ表示、プログレスバーはアニメーション
+    elements.progressText.textContent = `スクリーンショット中... (${current} ページ取得済み)`;
+    elements.progressFill.style.width = "100%";
+    elements.progressFill.classList.add("indeterminate");
+  } else {
+    const percent = Math.round((current / total) * 100);
+    elements.progressText.textContent = `スクリーンショット中... (${current}/${total})`;
+    elements.progressFill.style.width = `${percent}%`;
+    elements.progressFill.classList.remove("indeterminate");
+  }
 }
 
 /**

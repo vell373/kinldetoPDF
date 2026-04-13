@@ -10,6 +10,8 @@ let captureState = {
   startPage: 1,
   endPage: 10,
   rtl: false, // true = 右開き（漫画・縦書き）
+  autoDetect: false, // true = 終了ページ省略・重複検知で自動終了
+  previousDataUrl: null, // 重複検知用：直前のスクリーンショット
 };
 
 // sidepanel とのポート接続を保持
@@ -114,6 +116,9 @@ async function handleStartCapture(request) {
   captureState.startPage = startPage;
   captureState.endPage = endPage;
   captureState.rtl = request.rtl || false;
+  // endPage が 9999 は自動検出モード（sidepanel.js 側で設定）
+  captureState.autoDetect = endPage >= 9999;
+  captureState.previousDataUrl = null;
 
   // tab情報取得（windowId が必要）
   const tab = await chrome.tabs.get(tabId);
@@ -176,11 +181,24 @@ async function captureLoop() {
           action: "progressUpdate",
           current: captureState.currentPage,
           total: captureState.totalPages,
+          autoDetect: captureState.autoDetect,
         });
       }
 
       // スクリーンショット取得（現在表示中のページを撮影）
       const dataUrl = await captureScreenshot();
+
+      // 重複検知：前のページと同じ画像なら最終ページに到達したと判断
+      if (captureState.previousDataUrl !== null && dataUrl === captureState.previousDataUrl) {
+        if (sidepanelPort) {
+          sidepanelPort.postMessage({
+            action: "lastPageDetected",
+            pageNumber: captureState.currentPage,
+          });
+        }
+        break;
+      }
+      captureState.previousDataUrl = dataUrl;
 
       // sidepanel に送信
       if (sidepanelPort) {

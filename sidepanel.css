@@ -104,6 +104,12 @@ footer {
   color: var(--dark);
 }
 
+.label-optional {
+  font-weight: 400;
+  font-size: 11px;
+  color: #888;
+}
+
 .form-input {
   width: 100%;
   padding: 8px 10px;
@@ -201,6 +207,25 @@ footer {
   color: white;
   font-size: 11px;
   font-weight: 600;
+}
+
+/* 自動検出モード：終端不明なので流れるアニメーションで表示 */
+@keyframes indeterminate-slide {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+.progress-fill.indeterminate {
+  width: 100% !important;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--primary) 0px,
+    var(--primary-dark) 80px,
+    var(--primary) 160px
+  );
+  background-size: 200px 100%;
+  animation: indeterminate-slide 1.5s linear infinite;
+  transition: none;
 }
 
 /* ステータスメッセージ */
