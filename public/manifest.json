@@ -16,10 +16,10 @@
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "../src/background.js"
   },
   "side_panel": {
-    "default_path": "sidepanel.html"
+    "default_path": "../src/sidepanel.html"
   },
   "action": {
     "default_title": "Kindle to PDF",
@@ -36,7 +36,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["preview.html"],
+      "resources": ["../src/preview.html"],
       "matches": ["<all_urls>"]
     }
   ],
@@ -46,7 +46,7 @@
         "https://read.amazon.com/*",
         "https://read.amazon.co.jp/*"
       ],
-      "js": ["content.js"],
+      "js": ["../src/content.js"],
       "run_at": "document_start"
     }
   ]
