@@ -14,26 +14,11 @@ const PROVIDER_MODEL_KEYS = {
   gemini: "kindleToPdf_geminiModel",
 };
 
-// 共通プロンプト
-const TRANSCRIPTION_PROMPT = `このページの本文に書かれているテキストのみを文字起こししてください。
-
-【重要】以下の指示を必ず守ってください：
-- 複数段（列）のレイアウトの場合は、左段→右段の順で読み進めてください
-- 短い段落が連続している場合は、文脈を保ちながら段落を統合してください
-- 表、図、グラフなどは文字起こししないでください
-- 画像やチャートが存在する場合は、「[表: 説明]」「[図: 概要]」のように1行で簡潔に記述するのみ
-- 本のタイトルは除外してください
-- 本文に集中し、ビジュアル要素や装飾情報は最小限にしてください
-
-マークダウン形式について：
-- 見出しは必ず ### を使用してください（例：### セクション名）
-- 箇条書きは - を使用してください
-
-その他の指示：
-- 縦書きの場合は横書きに変換して出力してください
-- ルビ（ふりがな）は省略してください
-- ページ番号・ヘッダー・フッターは除外してください
-- テキストのみを出力し、余分な説明や前置きは不要です`;
+const TRANSCRIPTION_PROMPT_PATHS = [
+  "transcription_prompt.txt",
+  "src/transcription_prompt.txt",
+];
+let transcriptionPrompt = "";
 
 let previewData = null;
 let currentModalIndex = -1;
@@ -41,6 +26,27 @@ let dragSourceIndex = null;
 // 文字起こし結果（ページ番号 → テキストのMap）
 let transcriptionResults = new Map();
 let isTranscribing = false;
+
+/**
+ * 文字起こし用プロンプトをテキストファイルから読み込む
+ */
+async function loadTranscriptionPrompt() {
+  for (const path of TRANSCRIPTION_PROMPT_PATHS) {
+    try {
+      const response = await fetch(chrome.runtime.getURL(path));
+      if (!response.ok) {
+        continue;
+      }
+      transcriptionPrompt = (await response.text()).trim();
+      if (transcriptionPrompt) {
+        return;
+      }
+    } catch (error) {
+      // 次の候補パスを試す
+    }
+  }
+  throw new Error("文字起こしプロンプトの読み込みに失敗しました");
+}
 
 const elements = {
   filename: document.getElementById("filename"),
@@ -330,7 +336,7 @@ async function transcribeWithClaude(apiKey, model, base64Data, pageNumber) {
         role: "user",
         content: [
           { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64Data } },
-          { type: "text", text: TRANSCRIPTION_PROMPT },
+          { type: "text", text: transcriptionPrompt },
         ],
       }],
     }),
@@ -360,7 +366,7 @@ async function transcribeWithOpenAI(apiKey, model, base64Data, pageNumber) {
         role: "user",
         content: [
           { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Data}` } },
-          { type: "text", text: TRANSCRIPTION_PROMPT },
+          { type: "text", text: transcriptionPrompt },
         ],
       }],
     }),
@@ -386,7 +392,7 @@ async function transcribeWithGemini(apiKey, model, base64Data, pageNumber) {
         contents: [{
           parts: [
             { inlineData: { mimeType: "image/jpeg", data: base64Data } },
-            { text: TRANSCRIPTION_PROMPT },
+            { text: transcriptionPrompt },
           ],
         }],
       }),
@@ -408,7 +414,7 @@ async function transcribePage(provider, apiKey, model, dataUrl, pageNumber) {
   switch (provider) {
     case "openai": return transcribeWithOpenAI(apiKey, model, base64Data, pageNumber);
     case "gemini": return transcribeWithGemini(apiKey, model, base64Data, pageNumber);
-    default:       return transcribeWithClaude(apiKey, model, base64Data, pageNumber);
+    default: return transcribeWithClaude(apiKey, model, base64Data, pageNumber);
   }
 }
 
@@ -563,4 +569,13 @@ chrome.storage.local.get([
   }
 });
 
-loadPreviewData();
+async function initialize() {
+  try {
+    await loadTranscriptionPrompt();
+    await loadPreviewData();
+  } catch (error) {
+    setStatus(error.message, "error");
+  }
+}
+
+initialize();
