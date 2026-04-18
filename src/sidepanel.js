@@ -515,7 +515,7 @@ async function openPreview() {
   });
 
   // プレビュータブを開く
-  const previewUrl = chrome.runtime.getURL("src/preview.html");
+  const previewUrl = chrome.runtime.getURL("preview.html");
   await chrome.tabs.create({ url: previewUrl });
 
   showStatus("プレビュータブを開きました", "success");
