@@ -58,6 +58,8 @@ const elements = {
   logContainer: document.getElementById("logContainer"),
   dirLtr: document.getElementById("dirLtr"),
   dirRtl: document.getElementById("dirRtl"),
+  settingsToggle: document.getElementById("settingsToggle"),
+  settingsContent: document.getElementById("settingsContent"),
 };
 
 /**
@@ -99,6 +101,19 @@ async function initialize() {
   });
   elements.modelAddBtn.addEventListener("click", addModel);
   elements.modelDeleteBtn.addEventListener("click", deleteSelectedModel);
+
+  // 設定セクション折りたたみ
+  elements.settingsToggle.addEventListener("click", () => {
+    elements.settingsToggle.classList.toggle("collapsed");
+    const isCollapsed = elements.settingsToggle.classList.contains("collapsed");
+    chrome.storage.local.set({ kindleToPdf_settingsCollapsed: isCollapsed });
+  });
+
+  // 保存されたState を復元
+  const stored = await chrome.storage.local.get("kindleToPdf_settingsCollapsed");
+  if (stored.kindleToPdf_settingsCollapsed) {
+    elements.settingsToggle.classList.add("collapsed");
+  }
 
   // 初期ログ
   addLog("サイドパネル起動完了", "info");

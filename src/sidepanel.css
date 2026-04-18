@@ -87,6 +87,60 @@ footer {
   color: var(--dark);
 }
 
+/* 折りたたみセクション */
+.section-collapsible {
+  padding: 0;
+}
+
+.section-toggle {
+  width: 100%;
+  background: white;
+  border: 1px solid #E0E0E0;
+  border-radius: var(--border-radius);
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color var(--transition);
+  margin-bottom: 0;
+}
+
+.section-toggle:hover {
+  background-color: #FAFAFA;
+}
+
+.section-toggle h2 {
+  margin: 0;
+  flex: 1;
+  text-align: left;
+}
+
+.toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  transition: transform var(--transition);
+  margin-left: 8px;
+}
+
+.section-toggle.collapsed .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.section-content {
+  background-color: white;
+  border: 1px solid #E0E0E0;
+  border-top: none;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.section-toggle.collapsed + .section-content {
+  display: none;
+}
+
 /* フォーム */
 .form-group {
   margin-bottom: 10px;

@@ -15,8 +15,12 @@
 
     <main>
       <!-- 設定セクション -->
-      <section id="settings" class="section">
-        <h2>設定</h2>
+      <section id="settings" class="section section-collapsible">
+        <button class="section-toggle" id="settingsToggle">
+          <h2>設定</h2>
+          <span class="toggle-icon">▼</span>
+        </button>
+        <div class="section-content" id="settingsContent">
         <div class="form-group">
           <label for="endPage">終了ページ <span class="label-optional">（省略で自動検出）</span></label>
           <input type="number" id="endPage" min="1" placeholder="自動検出" class="form-input">
@@ -60,6 +64,7 @@
             <button id="dirLtr" class="dir-btn active" data-dir="ltr">&#8592; 左開き</button>
             <button id="dirRtl" class="dir-btn" data-dir="rtl">右開き &#8594;</button>
           </div>
+        </div>
         </div>
       </section>
 
