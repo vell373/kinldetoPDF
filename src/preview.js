@@ -7,11 +7,11 @@ const STORAGE_KEY = "kindleToPdf_preview";
 const API_KEY_STORAGE_KEY = "kindleToPdf_apiKey"; // 旧バージョンとの互換性
 const PROVIDER_STORAGE_KEY = "kindleToPdf_provider";
 
-// デフォルトモデル
-const DEFAULT_MODELS = {
-  claude: "claude-haiku-4-5-20251001",
-  openai: "gpt-4o-mini",
-  gemini: "gemini-3.1-flash-lite-preview",
+// プロバイダー設定（モデルストレージキー）
+const PROVIDER_MODEL_KEYS = {
+  claude: "kindleToPdf_claudeModel",
+  openai: "kindleToPdf_openaiModel",
+  gemini: "kindleToPdf_geminiModel",
 };
 
 // 共通プロンプト
@@ -427,10 +427,15 @@ async function handleTranscribe() {
   const provider = stored[PROVIDER_STORAGE_KEY] || "claude";
   const apiKey = stored[`kindleToPdf_${provider}Key`] ||
     (provider === "claude" ? stored[API_KEY_STORAGE_KEY] || "" : "");
-  const model = stored[`kindleToPdf_${provider}Model`] || DEFAULT_MODELS[provider];
+  const model = stored[`kindleToPdf_${provider}Model`] || "";
 
   if (!apiKey) {
     setStatus("サイドパネルで API キーを設定してください", "error");
+    return;
+  }
+
+  if (!model) {
+    setStatus("サイドパネルでモデル名を設定してください", "error");
     return;
   }
 
@@ -530,4 +535,28 @@ function handleDownloadMd() {
 elements.downloadBtn.addEventListener("click", handleDownload);
 elements.transcribeBtn.addEventListener("click", handleTranscribe);
 elements.downloadMdBtn.addEventListener("click", handleDownloadMd);
+
+// APIキーとモデル名の設定確認
+chrome.storage.local.get([
+  PROVIDER_STORAGE_KEY,
+  "kindleToPdf_claudeKey",
+  "kindleToPdf_openaiKey",
+  "kindleToPdf_geminiKey",
+  "kindleToPdf_claudeModel",
+  "kindleToPdf_openaiModel",
+  "kindleToPdf_geminiModel",
+  API_KEY_STORAGE_KEY,
+], (stored) => {
+  const provider = stored[PROVIDER_STORAGE_KEY] || "claude";
+  const apiKey = stored[`kindleToPdf_${provider}Key`] ||
+    (provider === "claude" ? stored[API_KEY_STORAGE_KEY] || "" : "");
+  const model = stored[`kindleToPdf_${provider}Model`] || "";
+
+  // APIキーまたはモデル名がない場合はボタンを無効化
+  if (!apiKey || !model) {
+    elements.transcribeBtn.disabled = true;
+    elements.transcribeBtn.title = "サイドパネルで API キーとモデル名を設定してください";
+  }
+});
+
 loadPreviewData();

@@ -18,25 +18,19 @@ const PROVIDER_CONFIG = {
     label: "Claude API キー",
     placeholder: "sk-ant-...",
     storageKey: "kindleToPdf_claudeKey",
-    defaultModel: "claude-haiku-4-5-20251001",
     modelStorageKey: "kindleToPdf_claudeModel",
-    modelPlaceholder: "claude-haiku-4-5-20251001",
   },
   openai: {
     label: "OpenAI API キー",
     placeholder: "sk-...",
     storageKey: "kindleToPdf_openaiKey",
-    defaultModel: "gpt-4o-mini",
     modelStorageKey: "kindleToPdf_openaiModel",
-    modelPlaceholder: "gpt-4o-mini",
   },
   gemini: {
     label: "Gemini API キー",
     placeholder: "AIzaSy...",
     storageKey: "kindleToPdf_geminiKey",
-    defaultModel: "gemini-3.1-flash-lite-preview",
     modelStorageKey: "kindleToPdf_geminiModel",
-    modelPlaceholder: "gemini-3.1-flash-lite-preview",
   },
 };
 
@@ -127,7 +121,6 @@ function updateApiKeyField() {
   const config = PROVIDER_CONFIG[selectedProvider];
   elements.apiKeyLabelText.textContent = config.label;
   elements.apiKey.placeholder = config.placeholder;
-  elements.modelName.placeholder = config.modelPlaceholder;
 }
 
 /**
