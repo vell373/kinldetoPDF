@@ -402,6 +402,106 @@ footer {
   background: #E8E8E8;
 }
 
+/* セレクトボックス */
+.form-input[type="text"],
+select.form-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid #D0D0D0;
+  border-radius: 4px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  margin-bottom: 8px;
+}
+
+select.form-input {
+  cursor: pointer;
+}
+
+select.form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(255, 153, 0, 0.1);
+}
+
+select.form-input:last-child {
+  margin-bottom: 0;
+}
+
+/* 必須ラベル */
+.label-required {
+  font-weight: 400;
+  font-size: 11px;
+  color: #C82333;
+}
+
+/* モデル追加行 */
+.model-add-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.model-add-row .form-input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.model-add-row .btn-small {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  width: auto;
+  margin-bottom: 0;
+}
+
+/* 小ボタン */
+.btn-small {
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.btn-small:last-child {
+  margin-bottom: 0;
+}
+
+.btn-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-small.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-small.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-dark);
+  box-shadow: 0 2px 6px rgba(255, 153, 0, 0.3);
+}
+
+.btn-small.btn-danger {
+  background-color: var(--danger);
+  color: white;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.btn-small.btn-danger:hover:not(:disabled) {
+  background-color: #C82333;
+  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+}
+
 /* 隠す */
 .hidden {
   display: none !important;

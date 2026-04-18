@@ -19,18 +19,21 @@ const PROVIDER_CONFIG = {
     placeholder: "sk-ant-...",
     storageKey: "kindleToPdf_claudeKey",
     modelStorageKey: "kindleToPdf_claudeModel",
+    modelsStorageKey: "kindleToPdf_claudeModels",
   },
   openai: {
     label: "OpenAI API キー",
     placeholder: "sk-...",
     storageKey: "kindleToPdf_openaiKey",
     modelStorageKey: "kindleToPdf_openaiModel",
+    modelsStorageKey: "kindleToPdf_openaiModels",
   },
   gemini: {
     label: "Gemini API キー",
     placeholder: "AIzaSy...",
     storageKey: "kindleToPdf_geminiKey",
     modelStorageKey: "kindleToPdf_geminiModel",
+    modelsStorageKey: "kindleToPdf_geminiModels",
   },
 };
 
@@ -43,8 +46,11 @@ const elements = {
   filename: document.getElementById("filename"),
   apiKey: document.getElementById("apiKey"),
   apiKeyLabelText: document.getElementById("apiKeyLabelText"),
-  modelName: document.getElementById("modelName"),
   modelNameLabelText: document.getElementById("modelNameLabelText"),
+  modelSelect: document.getElementById("modelSelect"),
+  modelNameInput: document.getElementById("modelNameInput"),
+  modelAddBtn: document.getElementById("modelAddBtn"),
+  modelDeleteBtn: document.getElementById("modelDeleteBtn"),
   progressSection: document.getElementById("progress"),
   progressText: document.getElementById("progressText"),
   progressFill: document.getElementById("progressFill"),
@@ -84,8 +90,15 @@ async function initialize() {
 
   // 保存済みプロバイダー・APIキー・モデル名を復元
   await loadApiKey();
+  await loadModels();
   elements.apiKey.addEventListener("change", saveApiKey);
-  elements.modelName.addEventListener("change", saveApiKey);
+
+  // モデル管理のイベント登録
+  elements.modelSelect.addEventListener("change", () => {
+    saveSelectedModel(elements.modelSelect.value);
+  });
+  elements.modelAddBtn.addEventListener("click", addModel);
+  elements.modelDeleteBtn.addEventListener("click", deleteSelectedModel);
 
   // 初期ログ
   addLog("サイドパネル起動完了", "info");
@@ -107,9 +120,9 @@ function initProviderToggle() {
       updateApiKeyField();
       // 切り替え先のキーとモデルを読み込む
       const config = PROVIDER_CONFIG[selectedProvider];
-      const stored = await chrome.storage.local.get([config.storageKey, config.modelStorageKey]);
+      const stored = await chrome.storage.local.get([config.storageKey]);
       elements.apiKey.value = stored[config.storageKey] || "";
-      elements.modelName.value = stored[config.modelStorageKey] || "";
+      await loadModels();
     });
   });
 }
@@ -121,6 +134,105 @@ function updateApiKeyField() {
   const config = PROVIDER_CONFIG[selectedProvider];
   elements.apiKeyLabelText.textContent = config.label;
   elements.apiKey.placeholder = config.placeholder;
+}
+
+/**
+ * セレクトボックスをモデル一覧で再描画する
+ */
+function renderModelSelect(models = [], selectedModel = "") {
+  elements.modelSelect.innerHTML = '<option value="">モデルを選択してください</option>';
+  if (models.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "登録済みモデルなし";
+    option.disabled = true;
+    elements.modelSelect.appendChild(option);
+    elements.modelSelect.value = "";
+    elements.modelDeleteBtn.disabled = true;
+    return;
+  }
+  models.forEach((model) => {
+    const option = document.createElement("option");
+    option.value = model;
+    option.textContent = model;
+    elements.modelSelect.appendChild(option);
+  });
+  elements.modelSelect.value = selectedModel || "";
+  elements.modelDeleteBtn.disabled = !selectedModel;
+}
+
+/**
+ * ストレージから現在のプロバイダーのモデル一覧と選択中モデルを読み込む
+ */
+async function loadModels() {
+  const config = PROVIDER_CONFIG[selectedProvider];
+  const stored = await chrome.storage.local.get([
+    config.modelsStorageKey,
+    config.modelStorageKey,
+  ]);
+  const models = stored[config.modelsStorageKey] || [];
+  const selectedModel = stored[config.modelStorageKey] || "";
+  renderModelSelect(models, selectedModel);
+}
+
+/**
+ * 選択中のモデルをストレージに保存する
+ */
+async function saveSelectedModel(model) {
+  const config = PROVIDER_CONFIG[selectedProvider];
+  await chrome.storage.local.set({
+    [config.modelStorageKey]: model,
+  });
+  elements.modelDeleteBtn.disabled = !model;
+}
+
+/**
+ * 新しいモデル名を追加する
+ */
+async function addModel() {
+  const input = elements.modelNameInput.value.trim();
+  if (!input) return;
+
+  const config = PROVIDER_CONFIG[selectedProvider];
+  const stored = await chrome.storage.local.get(config.modelsStorageKey);
+  let models = stored[config.modelsStorageKey] || [];
+
+  // 重複排除
+  if (models.includes(input)) {
+    elements.modelNameInput.value = "";
+    return;
+  }
+
+  models.push(input);
+  await chrome.storage.local.set({
+    [config.modelsStorageKey]: models,
+    [config.modelStorageKey]: input, // 追加したモデルを選択状態にする
+  });
+
+  renderModelSelect(models, input);
+  elements.modelNameInput.value = "";
+}
+
+/**
+ * 選択中のモデルを削除する
+ */
+async function deleteSelectedModel() {
+  const modelToDelete = elements.modelSelect.value;
+  if (!modelToDelete) return;
+
+  const config = PROVIDER_CONFIG[selectedProvider];
+  const stored = await chrome.storage.local.get(config.modelsStorageKey);
+  let models = stored[config.modelsStorageKey] || [];
+
+  models = models.filter((m) => m !== modelToDelete);
+  const newSelected = models.length > 0 ? models[0] : "";
+
+  await chrome.storage.local.set({
+    [config.modelsStorageKey]: models,
+    [config.modelStorageKey]: newSelected,
+  });
+
+  renderModelSelect(models, newSelected);
 }
 
 /**
@@ -152,9 +264,6 @@ async function loadApiKey() {
     (selectedProvider === "claude" ? stored.kindleToPdf_apiKey || "" : "");
   elements.apiKey.value = key;
 
-  // 現在のプロバイダーのモデル名を読み込む
-  const model = stored[config.modelStorageKey] || "";
-  elements.modelName.value = model;
 }
 
 /**
@@ -164,7 +273,6 @@ async function saveApiKey() {
   const config = PROVIDER_CONFIG[selectedProvider];
   await chrome.storage.local.set({
     [config.storageKey]: elements.apiKey.value.trim(),
-    [config.modelStorageKey]: elements.modelName.value.trim(),
   });
 }
 
