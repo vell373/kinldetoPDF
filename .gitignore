@@ -1,0 +1,30 @@
+# 環境変数・シークレット
+.env
+.env.local
+.env*.secret
+*.pem
+*.key
+
+# Node.js (将来のビルドプロセス用)
+node_modules/
+package-lock.json
+yarn.lock
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ログ・テンポラリ
+*.log
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ビルド出力（必要に応じて）
+dist/
+build/
