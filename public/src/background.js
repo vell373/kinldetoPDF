@@ -83,10 +83,15 @@ async function handleSidepanelMessage(request, port) {
   } catch (error) {
     console.error("Error handling message:", error);
     if (port && port.postMessage) {
-      port.postMessage({
-        action: "captureError",
-        error: error.message || "Unknown error",
-      });
+      try {
+        port.postMessage({
+          action: "captureError",
+          error: error.message || "Unknown error",
+        });
+      } catch (sendError) {
+        // ポート接続が閉じられている場合は無視
+        console.warn("Failed to send error message to sidepanel:", sendError.message);
+      }
     }
   }
 }
