@@ -4,7 +4,6 @@
  */
 
 const STORAGE_KEY = "kindleToPdf_preview";
-const API_KEY_STORAGE_KEY = "kindleToPdf_apiKey"; // 旧バージョンとの互換性
 const PROVIDER_STORAGE_KEY = "kindleToPdf_provider";
 
 // プロバイダー設定（モデルストレージキー）
@@ -424,20 +423,22 @@ async function transcribePage(provider, apiKey, model, dataUrl, pageNumber) {
 async function handleTranscribe() {
   if (!previewData || isTranscribing) return;
 
-  const stored = await chrome.storage.local.get([
-    PROVIDER_STORAGE_KEY,
-    "kindleToPdf_claudeKey",
-    "kindleToPdf_openaiKey",
-    "kindleToPdf_geminiKey",
-    "kindleToPdf_claudeModel",
-    "kindleToPdf_openaiModel",
-    "kindleToPdf_geminiModel",
-    API_KEY_STORAGE_KEY,
+  const [localStored, sessionStored] = await Promise.all([
+    chrome.storage.local.get([
+      PROVIDER_STORAGE_KEY,
+      "kindleToPdf_claudeModel",
+      "kindleToPdf_openaiModel",
+      "kindleToPdf_geminiModel",
+    ]),
+    chrome.storage.session.get([
+      "kindleToPdf_claudeKey",
+      "kindleToPdf_openaiKey",
+      "kindleToPdf_geminiKey",
+    ]),
   ]);
-  const provider = stored[PROVIDER_STORAGE_KEY] || "claude";
-  const apiKey = stored[`kindleToPdf_${provider}Key`] ||
-    (provider === "claude" ? stored[API_KEY_STORAGE_KEY] || "" : "");
-  const model = stored[`kindleToPdf_${provider}Model`] || "";
+  const provider = localStored[PROVIDER_STORAGE_KEY] || "claude";
+  const apiKey = await decryptApiKey(sessionStored[`kindleToPdf_${provider}Key`] || "");
+  const model = localStored[`kindleToPdf_${provider}Model`] || "";
 
   if (!apiKey) {
     setStatus("サイドパネルで API キーを設定してください", "error");
@@ -547,27 +548,30 @@ elements.transcribeBtn.addEventListener("click", handleTranscribe);
 elements.downloadMdBtn.addEventListener("click", handleDownloadMd);
 
 // APIキーとモデル名の設定確認
-chrome.storage.local.get([
-  PROVIDER_STORAGE_KEY,
-  "kindleToPdf_claudeKey",
-  "kindleToPdf_openaiKey",
-  "kindleToPdf_geminiKey",
-  "kindleToPdf_claudeModel",
-  "kindleToPdf_openaiModel",
-  "kindleToPdf_geminiModel",
-  API_KEY_STORAGE_KEY,
-], (stored) => {
-  const provider = stored[PROVIDER_STORAGE_KEY] || "claude";
-  const apiKey = stored[`kindleToPdf_${provider}Key`] ||
-    (provider === "claude" ? stored[API_KEY_STORAGE_KEY] || "" : "");
-  const model = stored[`kindleToPdf_${provider}Model`] || "";
+async function checkApiKeyConfig() {
+  const [localStored, sessionStored] = await Promise.all([
+    chrome.storage.local.get([
+      PROVIDER_STORAGE_KEY,
+      "kindleToPdf_claudeModel",
+      "kindleToPdf_openaiModel",
+      "kindleToPdf_geminiModel",
+    ]),
+    chrome.storage.session.get([
+      "kindleToPdf_claudeKey",
+      "kindleToPdf_openaiKey",
+      "kindleToPdf_geminiKey",
+    ]),
+  ]);
+  const provider = localStored[PROVIDER_STORAGE_KEY] || "claude";
+  const apiKey = await decryptApiKey(sessionStored[`kindleToPdf_${provider}Key`] || "");
+  const model = localStored[`kindleToPdf_${provider}Model`] || "";
 
-  // APIキーまたはモデル名がない場合はボタンを無効化
   if (!apiKey || !model) {
     elements.transcribeBtn.disabled = true;
     elements.transcribeBtn.title = "サイドパネルで API キーとモデル名を設定してください";
   }
-});
+}
+checkApiKeyConfig();
 
 async function initialize() {
   try {

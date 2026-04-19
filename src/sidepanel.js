@@ -133,10 +133,10 @@ function initProviderToggle() {
       );
       await chrome.storage.local.set({ [PROVIDER_STORAGE_KEY]: selectedProvider });
       updateApiKeyField();
-      // 切り替え先のキーとモデルを読み込む
+      // 切り替え先の暗号化キーをセッションストレージから読み込む
       const config = PROVIDER_CONFIG[selectedProvider];
-      const stored = await chrome.storage.local.get([config.storageKey]);
-      elements.apiKey.value = stored[config.storageKey] || "";
+      const stored = await chrome.storage.session.get([config.storageKey]);
+      elements.apiKey.value = await decryptApiKey(stored[config.storageKey] || "");
       await loadModels();
     });
   });
@@ -252,43 +252,46 @@ async function deleteSelectedModel() {
 
 /**
  * プロバイダー・APIキーをストレージから読み込む
+ * APIキーはセッションストレージから復号して取得する。
+ * モデル等の設定はローカルストレージから取得する。
  */
 async function loadApiKey() {
-  const stored = await chrome.storage.local.get([
-    PROVIDER_STORAGE_KEY,
-    "kindleToPdf_claudeKey",
-    "kindleToPdf_openaiKey",
-    "kindleToPdf_geminiKey",
-    "kindleToPdf_claudeModel",
-    "kindleToPdf_openaiModel",
-    "kindleToPdf_geminiModel",
-    "kindleToPdf_apiKey", // 旧バージョンとの互換性
+  const [localStored, sessionStored] = await Promise.all([
+    chrome.storage.local.get(PROVIDER_STORAGE_KEY),
+    chrome.storage.session.get([
+      "kindleToPdf_claudeKey",
+      "kindleToPdf_openaiKey",
+      "kindleToPdf_geminiKey",
+    ]),
   ]);
 
-  if (stored[PROVIDER_STORAGE_KEY]) {
-    selectedProvider = stored[PROVIDER_STORAGE_KEY];
+  if (localStored[PROVIDER_STORAGE_KEY]) {
+    selectedProvider = localStored[PROVIDER_STORAGE_KEY];
     document.querySelectorAll(".provider-btn").forEach((btn) =>
       btn.classList.toggle("active", btn.dataset.provider === selectedProvider)
     );
   }
   updateApiKeyField();
 
-  // 現在のプロバイダーのキーを読み込む（Claudeは旧キーにもフォールバック）
-  const config = PROVIDER_CONFIG[selectedProvider];
-  const key = stored[config.storageKey] ||
-    (selectedProvider === "claude" ? stored.kindleToPdf_apiKey || "" : "");
-  elements.apiKey.value = key;
+  // 旧バージョンのローカルストレージAPIキーを削除（セキュリティ向上）
+  await chrome.storage.local.remove([
+    "kindleToPdf_claudeKey",
+    "kindleToPdf_openaiKey",
+    "kindleToPdf_geminiKey",
+    "kindleToPdf_apiKey",
+  ]);
 
+  const config = PROVIDER_CONFIG[selectedProvider];
+  elements.apiKey.value = await decryptApiKey(sessionStored[config.storageKey] || "");
 }
 
 /**
- * 現在のプロバイダーのAPIキーとモデル名をストレージに保存する
+ * 現在のプロバイダーのAPIキーを暗号化してセッションストレージに保存する
  */
 async function saveApiKey() {
   const config = PROVIDER_CONFIG[selectedProvider];
-  await chrome.storage.local.set({
-    [config.storageKey]: elements.apiKey.value.trim(),
-  });
+  const encrypted = await encryptApiKey(elements.apiKey.value.trim());
+  await chrome.storage.session.set({ [config.storageKey]: encrypted });
 }
 
 /**
