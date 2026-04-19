@@ -13,7 +13,8 @@
     "unlimitedStorage"
   ],
   "host_permissions": [
-    "<all_urls>",
+    "https://read.amazon.com/*",
+    "https://read.amazon.co.jp/*",
     "https://api.anthropic.com/*",
     "https://api.openai.com/*",
     "https://generativelanguage.googleapis.com/*"
@@ -40,7 +41,10 @@
   "web_accessible_resources": [
     {
       "resources": ["preview.html"],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "https://read.amazon.com/*",
+        "https://read.amazon.co.jp/*"
+      ]
     }
   ],
   "content_scripts": [
